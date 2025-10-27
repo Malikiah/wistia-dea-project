@@ -9,7 +9,7 @@ env:
   LAMBDA_FUNCTION_NAME: wistia-api-pull
   AWS_REGION: us-east-1 # Change this to your desired AWS region
   S3_DEPLOYMENT_BUCKET: wistia-dea-project # S3 bucket for package staging
-  AWS_ROLE: arn:aws:iam::918346807626:role/wistia-lambda-s3
+  AWS_ROLE: arn:aws:iam::918346807626:role/github-actions-lambda
 
 jobs:
   deploy:
