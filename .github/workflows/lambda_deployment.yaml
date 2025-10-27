@@ -1,0 +1,50 @@
+name: Deploy Wistia Extractor Lambda
+
+on:
+  push:
+    branches:
+      - main  # Trigger workflow on push to the main branch
+
+env:
+  LAMBDA_FUNCTION_NAME: wistia-api-pull
+  AWS_REGION: us-east-1 # Change this to your desired AWS region
+  S3_DEPLOYMENT_BUCKET: wistia-dea-project # S3 bucket for package staging
+  AWS_ROLE: arn:aws:iam::918346807626:role/wistia-lambda-s3
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{env.AWS_ROLE}}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 2. Setup Python Environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9' # Ensure this matches your Lambda runtime
+
+      - name: Make package script executable
+        run: chmod +x create_package.sh
+      - name: Execute packaging script
+        run: ./create_package.sh
+
+      # 4. Upload Package to S3 (Staging)
+      - name: Upload deployment package to S3
+        run: |
+          aws s3 cp wistia_lambda_package.zip s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
+
+      # 5. Deploy to AWS Lambda
+      - name: Deploy Lambda function
+        uses: aws-actions/amazon-cloudwatch-actions@v1
+        with:
+          function-name: ${{ env.LAMBDA_FUNCTION_NAME }}
+          zip-file: s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
+          s3-bucket: ${{ env.S3_DEPLOYMENT_BUCKET }}
+          s3-key: wistia_lambda_package.zip
