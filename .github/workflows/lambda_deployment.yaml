@@ -42,7 +42,7 @@ jobs:
 
       # 5. Deploy to AWS Lambda
       - name: Deploy Lambda function
-        uses: aws-actions/amazon-cloudwatch-actions@v1
+        uses: aws-actions/aws-lambda-deploy@v1
         with:
           function-name: ${{ env.LAMBDA_FUNCTION_NAME }}
           zip-file: s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
