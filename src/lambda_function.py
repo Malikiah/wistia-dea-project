@@ -121,7 +121,7 @@ def get_media():
         except Exception as e:
             print(e)
     else:
-        print("No media found.")
+        print("No media found...")
 
 
 def get_media_engagements():
