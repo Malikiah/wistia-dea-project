@@ -18,6 +18,10 @@ env:
   LAMBDA_RUNTIME: python3.9
   LAMBDA_TIMEOUT: 30
   LAMBDA_MEMORY: 128
+
+  SCHEDULE_CRON: 'cron(0 5 * * ? *)' # Runs the Lambda function daily at 5:00 AM UTC
+  EVENTBRIDGE_RULE_NAME: WistiaPullScheduleRule # Fixed name for the AWS scheduler
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
