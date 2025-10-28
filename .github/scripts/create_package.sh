@@ -13,7 +13,7 @@ echo "Installing requests library into deployment package..."
 pip install requests -t "$DEPLOY_DIR"
 
 # 2. Copy the Lambda handler code into the package root
-cp ../../src/lambda_function.py "$DEPLOY_DIR"/
+cp ./src/lambda_function.py "$DEPLOY_DIR"/
 
 # 3. Create the deployment zip file
 DEPLOYMENT_ZIP="wistia_lambda_package.zip"
