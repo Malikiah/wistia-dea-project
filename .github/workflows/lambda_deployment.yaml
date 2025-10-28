@@ -46,7 +46,45 @@ jobs:
       # 5. Deploy to AWS Lambda
       - name: Deploy Lambda function (Using S3 Artifact)
         run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --s3-bucket ${{ env.S3_DEPLOYMENT_BUCKET }} \
-            --s3-key wistia_lambda_package.zip 
+          # Check if the function exists
+          aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --region ${{ env.AWS_REGION }} > /dev/null 2>&1
+          
+          # Store the exit status of the previous command
+          # 0 = Exists, 254 (or non-zero) = Not Found or Error
+          EXISTS=$?
+
+          if [ $EXISTS -eq 0 ]; then
+            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
+            
+            # --- UPDATE FUNCTION CODE & CONFIGURATION ---
+            # Update Code (pulls latest zip from S3)
+            aws lambda update-function-code \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --s3-bucket ${{ env.S3_DEPLOYMENT_BUCKET }} \
+              --s3-key wistia_lambda_package.zip \
+              --region ${{ env.AWS_REGION }}
+
+            # Update Configuration (important if runtime, memory, or role changes)
+            aws lambda update-function-configuration \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --runtime ${{ env.LAMBDA_RUNTIME }} \
+              --role ${{ env.LAMBDA_EXECUTION_ROLE }} \
+              --handler ${{ env.LAMBDA_HANDLER }} \
+              --timeout ${{ env.LAMBDA_TIMEOUT }} \
+              --memory-size ${{ env.LAMBDA_MEMORY }} \
+              --region ${{ env.AWS_REGION }}
+            
+          else
+            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist. Running create..."
+            
+            # --- CREATE FUNCTION ---
+            aws lambda create-function \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --runtime ${{ env.LAMBDA_RUNTIME }} \
+              --role ${{ env.LAMBDA_EXECUTION_ROLE }} \
+              --handler ${{ env.LAMBDA_HANDLER }} \
+              --timeout ${{ env.LAMBDA_TIMEOUT }} \
+              --memory-size ${{ env.LAMBDA_MEMORY }} \
+              --code S3Bucket=${{ env.S3_DEPLOYMENT_BUCKET }},S3Key=wistia_lambda_package.zip \
+              --region ${{ env.AWS_REGION }}
+          fi
