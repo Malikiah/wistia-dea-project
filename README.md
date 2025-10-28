@@ -81,19 +81,20 @@ Wistia API
 
 ---
 
-#### Ingestion
+#### Ingestion 
 Lambda function hits wistia api and adds minor additional information needed for joining data together and stores these json file into an S3 bucket.
+
+---
+
+#### Scheduling and Auto Retry
+Scheduling will be handled by AWS EventBridge to run every day
+
 
 ---
 
 #### Storage
 Lambda → S3 <br>
 I will be storing the json output into S3 to save money on storage and for simplicity. S3 can act as a datalake.
-
----
-
-#### Scheduling and Auto Retry
-Scheduling will be handled by AWS EventBridge to run every day
 
 ---
 #### Dashboards (Streamlit)
