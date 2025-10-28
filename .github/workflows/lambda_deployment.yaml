@@ -34,9 +34,9 @@ jobs:
           python-version: '3.9' # Ensure this matches your Lambda runtime
 
       - name: Make package script executable
-        run: chmod +x ./scripts/create_package.sh
+        run: chmod +x .github/scripts/create_package.sh
       - name: Execute packaging script
-        run: ./scripts/create_package.sh
+        run: ./.github/scripts/create_package.sh
 
       # 4. Upload Package to S3 (Staging)
       - name: Upload deployment package to S3
