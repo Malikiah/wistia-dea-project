@@ -108,26 +108,53 @@ jobs:
       # Configure EventBridge Schedule
       - name: Configure daily EventBridge schedule
         run: |
-          LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query 'Configuration.FunctionArn' --region ${{ env.AWS_REGION }} --output text)
-          
-          # 1. Create/Update the EventBridge Rule
+          # Define Statement ID for permission check
+          STATEMENT_ID="${{ env.EVENTBRIDGE_RULE_NAME }}-Invoke"
+
+          # Get Lambda ARN (Needed for both targets and permissions)
+          LAMBDA_ARN=$(aws lambda get-function \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --query 'Configuration.FunctionArn' \
+            --region "${{ env.AWS_REGION }}" \
+            --output text)
+
+          # Get EventBridge Rule ARN (Needed for permission source)
+          RULE_ARN="arn:aws:events:${{ env.AWS_REGION }}:918346807626:rule/${{ env.EVENTBRIDGE_RULE_NAME }}"
+
+          # 1. Create/Update the EventBridge Rule (put-rule is idempotent)
+          echo "Creating/Updating EventBridge rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
           aws events put-rule \
-            --name ${{ env.EVENTBRIDGE_RULE_NAME }} \
+            --name "${{ env.EVENTBRIDGE_RULE_NAME }}" \
             --schedule-expression "${{ env.SCHEDULE_CRON }}" \
             --state ENABLED \
-            --region ${{ env.AWS_REGION }}
-            
-          # 2. Grant EventBridge Permission to Invoke Lambda
-          aws lambda add-permission \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --statement-id "${{ env.EVENTBRIDGE_RULE_NAME }}-Invoke" \
-            --action "lambda:InvokeFunction" \
-            --principal events.amazonaws.com \
-            --source-arn arn:aws:events:${{ env.AWS_REGION }}:918346807626:rule/${{ env.EVENTBRIDGE_RULE_NAME }} \
-            --region ${{ env.AWS_REGION }}
-            
-          # 3. Set the Lambda Function as the Target of the Rule
+            --region "${{ env.AWS_REGION }}"
+
+          # 2. Check if Lambda permission already exists using grep exit status
+          echo "Checking for existing Lambda permission with Sid: ${STATEMENT_ID}"
+          # Try to get the policy and grep for the Sid. Redirect errors to null.
+          aws lambda get-policy --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" --region "${{ env.AWS_REGION }}" 2>/dev/null | grep -q "\"Sid\":\"${STATEMENT_ID}\""
+          GREP_EXIT_STATUS=$? # Capture grep's exit status (0 = found, 1 = not found)
+
+          if [ $GREP_EXIT_STATUS -ne 0 ]; then
+            # If grep failed (exit status != 0), the Sid was not found. Add permission.
+            echo "Permission with Statement ID ${STATEMENT_ID} not found or get-policy failed. Adding permission..."
+            aws lambda add-permission \
+              --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+              --statement-id "${STATEMENT_ID}" \
+              --action "lambda:InvokeFunction" \
+              --principal events.amazonaws.com \
+              --source-arn "${RULE_ARN}" \
+              --region "${{ env.AWS_REGION }}"
+          else
+            # If grep succeeded (exit status == 0), the Sid was found. Skip.
+            echo "Permission with Statement ID ${STATEMENT_ID} already exists. Skipping add-permission."
+          fi
+
+          # 3. Set the Lambda Function as the Target of the Rule (put-targets is idempotent)
+          echo "Setting Lambda function as target for rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
           aws events put-targets \
-            --rule ${{ env.EVENTBRIDGE_RULE_NAME }} \
-            --targets "Id=1,Arn=$LAMBDA_ARN" \
-            --region ${{ env.AWS_REGION }}
+            --rule "${{ env.EVENTBRIDGE_RULE_NAME }}" \
+            --targets "Id=1,Arn=${LAMBDA_ARN}" \
+            --region "${{ env.AWS_REGION }}"
+
+          echo "EventBridge schedule configured successfully."
