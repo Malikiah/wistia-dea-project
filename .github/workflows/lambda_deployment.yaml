@@ -51,7 +51,7 @@ jobs:
       # 5. Deploy to AWS Lambda
       - name: Deploy Lambda function (Using S3 Artifact)
         run: |
-        # Use a subshell method to reliably get the exit code without shell termination.
+          # Use a subshell method to reliably get the exit code without shell termination.
           # The result of this subshell will be 0 if the function is found, 1 if not.
           FUNCTION_EXISTS=$(aws lambda get-function \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
