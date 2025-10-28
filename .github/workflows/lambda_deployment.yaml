@@ -61,12 +61,20 @@ jobs:
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
             
             # --- UPDATE FUNCTION CODE & CONFIGURATION ---
+            # Update Code (pulls latest zip from S3)
             aws lambda update-function-code \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --s3-bucket ${{ env.S3_DEPLOYMENT_BUCKET }} \
               --s3-key wistia_lambda_package.zip \
               --region ${{ env.AWS_REGION }}
 
+            # *** CRITICAL FIX: WAIT FOR CODE UPDATE TO COMPLETE ***
+            echo "Waiting for code update to complete before modifying configuration..."
+            aws lambda wait function-updated \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --region ${{ env.AWS_REGION }}
+
+            # Update Configuration (important if runtime, memory, or role changes)
             aws lambda update-function-configuration \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --runtime ${{ env.LAMBDA_RUNTIME }} \
@@ -80,8 +88,7 @@ jobs:
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist. Running create..."
             
             # --- CREATE FUNCTION ---
-            # This is the path that caused the ResourceConflictException.
-            # If we enter this block, the function truly must not exist.
+            # This path inherently does not have a conflict issue, as it's the first operation.
             aws lambda create-function \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --runtime ${{ env.LAMBDA_RUNTIME }} \
