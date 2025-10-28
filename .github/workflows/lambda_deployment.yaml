@@ -3,31 +3,31 @@ name: Deploy Wistia Extractor Lambda
 on:
   push:
     branches:
-      - main  # Trigger workflow on push to the main branch
+      - main
 
 env:
   WISTIA_API_KEY: ${{ secrets.WISTIA_API_KEY }}
 
   LAMBDA_FUNCTION_NAME: wistia-api-pull
-  AWS_REGION: us-east-1 # Change this to your desired AWS region
-  S3_DEPLOYMENT_BUCKET: wistia-dea-project # S3 bucket for package staging
+  AWS_REGION: us-east-1
+  S3_DEPLOYMENT_BUCKET: wistia-dea-project #
   AWS_ROLE: arn:aws:iam::918346807626:role/github-actions-lambda
 
-  LAMBDA_EXECUTION_ROLE: arn:aws:iam::918346807626:role/service-role/wisita-api-pull-role-ympahjkx # <-- You must provide the ARN of the Lambda Execution Role here
+  LAMBDA_EXECUTION_ROLE: arn:aws:iam::918346807626:role/service-role/wisita-api-pull-role-ympahjkx
   LAMBDA_HANDLER: lambda_function.lambda_handler
   LAMBDA_RUNTIME: python3.9
   LAMBDA_TIMEOUT: 30
   LAMBDA_MEMORY: 128
 
-  SCHEDULE_CRON: 'cron(0 5 * * ? *)' # Runs the Lambda function daily at 5:00 AM UTC
-  EVENTBRIDGE_RULE_NAME: WistiaPullScheduleRule # Fixed name for the AWS scheduler
+  SCHEDULE_CRON: 'cron(0 5 * * ? *)'
+  EVENTBRIDGE_RULE_NAME: WistiaPullScheduleRule
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # Required to request an OIDC token
-      contents: read   # Required for actions/checkout
+      contents: read
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
           role-to-assume: ${{env.AWS_ROLE}}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 2. Setup Python Environment
+      # Setup Python Environment
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -49,16 +49,14 @@ jobs:
       - name: Execute packaging script
         run: ./.github/scripts/create_package.sh
 
-      # 4. Upload Package to S3 (Staging)
+      # Upload Package to S3 (Staging)
       - name: Upload deployment package to S3
         run: |
           aws s3 cp wistia_lambda_package.zip s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
 
-      # 5. Deploy to AWS Lambda
+      # Deploy to AWS Lambda
       - name: Deploy Lambda function (Using S3 Artifact)
         run: |
-          # Use a subshell method to reliably get the exit code without shell termination.
-          # The result of this subshell will be 0 if the function is found, 1 if not.
           FUNCTION_EXISTS=$(aws lambda get-function \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --region ${{ env.AWS_REGION }} > /dev/null 2>&1 && echo 0 || echo 1)
@@ -70,14 +68,12 @@ jobs:
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
             
             # --- UPDATE FUNCTION CODE & CONFIGURATION ---
-            # Update Code (pulls latest zip from S3)
             aws lambda update-function-code \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --s3-bucket ${{ env.S3_DEPLOYMENT_BUCKET }} \
               --s3-key wistia_lambda_package.zip \
               --region ${{ env.AWS_REGION }}
 
-            # *** CRITICAL FIX: WAIT FOR CODE UPDATE TO COMPLETE ***
             echo "Waiting for code update to complete before modifying configuration..."
             aws lambda wait function-updated \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
@@ -97,8 +93,7 @@ jobs:
           else
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist. Running create..."
             
-            # --- CREATE FUNCTION ---
-            # Added --environment parameter here
+            # --- CREATE FUNCTION --
             aws lambda create-function \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --runtime ${{ env.LAMBDA_RUNTIME }} \
@@ -110,7 +105,7 @@ jobs:
               --environment "$ENVIRONMENT_VARS" \
               --region ${{ env.AWS_REGION }}
           fi
-      # 6. Configure EventBridge Schedule (NEW STEP)
+      # Configure EventBridge Schedule
       - name: Configure daily EventBridge schedule
         run: |
           LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query 'Configuration.FunctionArn' --region ${{ env.AWS_REGION }} --output text)
@@ -123,7 +118,6 @@ jobs:
             --region ${{ env.AWS_REGION }}
             
           # 2. Grant EventBridge Permission to Invoke Lambda
-          # This command is idempotent (safe to run multiple times)
           aws lambda add-permission \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --statement-id "${{ env.EVENTBRIDGE_RULE_NAME }}-Invoke" \
