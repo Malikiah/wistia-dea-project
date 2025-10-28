@@ -11,6 +11,11 @@ env:
   S3_DEPLOYMENT_BUCKET: wistia-dea-project # S3 bucket for package staging
   AWS_ROLE: arn:aws:iam::918346807626:role/github-actions-lambda
 
+  LAMBDA_EXECUTION_ROLE: arn:aws:iam::918346807626:role/service-role/wisita-api-pull-role-ympahjkx # <-- You must provide the ARN of the Lambda Execution Role here
+  LAMBDA_HANDLER: lambda_function.lambda_handler
+  LAMBDA_RUNTIME: python3.9
+  LAMBDA_TIMEOUT: 30
+  LAMBDA_MEMORY: 16
 jobs:
   deploy:
     runs-on: ubuntu-latest
