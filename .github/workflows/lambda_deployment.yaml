@@ -51,15 +51,19 @@ jobs:
       # 5. Deploy to AWS Lambda
       - name: Deploy Lambda function (Using S3 Artifact)
         run: |
-          # Check if the function exists
-          aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --region ${{ env.AWS_REGION }} > /dev/null 2>&1
+          # The logic is wrapped in a sub-shell/block to manage the exit code flow.
           
-          # Store the exit status of the previous command
-          # 0 = Exists, 254 (or non-zero) = Not Found or Error
-          EXISTS=$?
+          # 1. Attempt to get the function info. 
+          # The result of the `|| true` ensures the step does not fail immediately.
+          aws lambda get-function \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --region ${{ env.AWS_REGION }} > /dev/null 2>&1 || GET_EXISTS=$?
 
-          if [ $EXISTS -eq 0 ]; then
-            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
+          # The variable GET_EXISTS will be 0 if the function exists, 
+          # or a non-zero error code (like 254) if it doesn't.
+          
+          if [ "${GET_EXISTS}" -eq 0 ]; then
+            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists (Exit Code: $GET_EXISTS). Running update..."
             
             # --- UPDATE FUNCTION CODE & CONFIGURATION ---
             # Update Code (pulls latest zip from S3)
@@ -80,7 +84,7 @@ jobs:
               --region ${{ env.AWS_REGION }}
             
           else
-            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist. Running create..."
+            echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist (Exit Code: $GET_EXISTS). Running create..."
             
             # --- CREATE FUNCTION ---
             aws lambda create-function \
