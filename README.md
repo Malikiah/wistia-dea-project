@@ -65,18 +65,30 @@ This is the high-level overview of the system.
 
 ##### Data Source 
 Wistia API
+- dim_media → https://docs.wistia.com/reference/get_stats-medias-mediaid
+- dim_visitor → https://docs.wistia.com/reference/get_stats-visitors and https://docs.wistia.com/reference/get_stats-events
+- fct_media_engagement → https://docs.wistia.com/reference/get_stats-medias-mediaid-engagement
 
-#### Bronze Stage
+#### CICD
+1. Code will be pushed to github (Lambda Functions and git workflows)
+2. Github workflows package the lambda function and its dependencies
+3. Then creates or updates (Lambda Function and Event Bridge)
+
+#### Ingestion
+Lambda function hits wistia api and adds minor additional information needed for joining data together and stores these json file into an S3 bucket.
+
+#### Storage
 Lambda → S3
+I will be storing the json output into S3 to save money on storage and for simplicity. S3 can act as a datalake.
 
-Dashboards (Streamlit)
+#### Scheduling and Auto Retry
+Scheduling will be handled by AWS EventBridge to run every day
+
+#### Dashboards (Streamlit)
 Then we can hit S3 directly with Streamlit on the views to create BI dashboards. (Optionally)
 
 
 ### 4. Data Model
-- dim_media → https://docs.wistia.com/reference/get_stats-medias-mediaid
-- dim_visitor → https://docs.wistia.com/reference/get_stats-visitors and https://docs.wistia.com/reference/get_stats-events
-- fct_media_engagement → https://docs.wistia.com/reference/get_stats-medias-mediaid-engagement
 
 ![Pasted image 20251024143215.png](meta/images/Pasted%20image%2020251024143215.png)
 
@@ -84,11 +96,10 @@ Then we can hit S3 directly with Streamlit on the views to create BI dashboards.
 
 # Deliverables
 
-|   |   |
+|Area| Criteria                                                 |
 |---|---|
-|Area|Criteria|
-|Architecture|Clear, scalable, modular design|
-|Data Quality|Correct use of pagination, incremental logic, and schema|
-|Engineering|Effective error handling, retries, logging|
-|CI/CD|Working CI/CD for deployment or validation|
-|Documentation|README + architecture diagram + setup instructions|
+|Architecture| Clear, scalable, modular design                          |
+|Data Quality| Correct use of pagination, incremental logic, and schema |
+|Engineering| Effective error handling, retries, logging               |
+|CI/CD| Working CI/CD for deployment or validation               |
+|Documentation| README + architecture diagram + setup instructions       |
