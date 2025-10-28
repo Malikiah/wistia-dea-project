@@ -135,9 +135,11 @@ jobs:
             --state ENABLED \
             --region "${{ env.AWS_REGION }}"
 
-          # 2. Attempt to add Lambda permission, capture output/error AND exit status reliably
+          # 2. Attempt to add Lambda permission, explicitly controlling error exit
           echo "Attempting to add permission with Statement ID ${STATEMENT_ID}..."
-          # Run command, capture output/error to a variable, and *separately* capture exit status
+          
+          # Temporarily disable exit on error
+          set +e 
           ADD_PERM_OUTPUT=$(aws lambda add-permission \
             --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
             --statement-id "${STATEMENT_ID}" \
@@ -145,7 +147,9 @@ jobs:
             --principal events.amazonaws.com \
             --source-arn "${RULE_ARN}" \
             --region "${{ env.AWS_REGION }}" 2>&1)
-          ADD_PERM_EXIT_STATUS=$? # Capture exit status *immediately* after the command
+          ADD_PERM_EXIT_STATUS=$? # Capture exit status
+          # Re-enable exit on error
+          set -e 
 
           # Debugging: Print status and output regardless of success/failure
           echo "add-permission exit status: $ADD_PERM_EXIT_STATUS"
@@ -154,7 +158,6 @@ jobs:
           # 3. Check if the command failed (non-zero exit status)
           if [ $ADD_PERM_EXIT_STATUS -ne 0 ]; then
             # If it failed, check if the error was the expected ResourceConflictException
-            # Use grep on the captured output variable
             if echo "$ADD_PERM_OUTPUT" | grep -q "ResourceConflictException.*The statement id.*provided already exists"; then
               echo "Permission with Statement ID ${STATEMENT_ID} already exists (ResourceConflictException caught). Treating as success."
             else
