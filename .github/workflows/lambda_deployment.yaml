@@ -108,7 +108,7 @@ jobs:
       # Configure EventBridge Schedule
       - name: Configure daily EventBridge schedule
         run: |
-          # Define Statement ID for permission check
+          # Define Statement ID
           STATEMENT_ID="${{ env.EVENTBRIDGE_RULE_NAME }}-Invoke"
 
           # Get Lambda ARN (Needed for both targets and permissions)
@@ -117,9 +117,15 @@ jobs:
             --query 'Configuration.FunctionArn' \
             --region "${{ env.AWS_REGION }}" \
             --output text)
+          if [ -z "$LAMBDA_ARN" ]; then
+            echo "Error: Failed to retrieve Lambda ARN."
+            exit 1
+          fi
+          echo "Lambda ARN: $LAMBDA_ARN"
 
           # Get EventBridge Rule ARN (Needed for permission source)
           RULE_ARN="arn:aws:events:${{ env.AWS_REGION }}:918346807626:rule/${{ env.EVENTBRIDGE_RULE_NAME }}"
+          echo "Rule ARN: $RULE_ARN"
 
           # 1. Create/Update the EventBridge Rule (put-rule is idempotent)
           echo "Creating/Updating EventBridge rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
@@ -129,28 +135,34 @@ jobs:
             --state ENABLED \
             --region "${{ env.AWS_REGION }}"
 
-          # 2. Check if Lambda permission already exists using grep exit status
-          echo "Checking for existing Lambda permission with Sid: ${STATEMENT_ID}"
-          # Try to get the policy and grep for the Sid. Redirect errors to null.
-          aws lambda get-policy --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" --region "${{ env.AWS_REGION }}" 2>/dev/null | grep -q "\"Sid\":\"${STATEMENT_ID}\""
-          GREP_EXIT_STATUS=$? # Capture grep's exit status (0 = found, 1 = not found)
+          # 2. Attempt to add Lambda permission, capturing stderr
+          echo "Attempting to add permission with Statement ID ${STATEMENT_ID}..."
+          ADD_PERM_ERROR=$(aws lambda add-permission \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --statement-id "${STATEMENT_ID}" \
+            --action "lambda:InvokeFunction" \
+            --principal events.amazonaws.com \
+            --source-arn "${RULE_ARN}" \
+            --region "${{ env.AWS_REGION }}" 2>&1)
+          ADD_PERM_EXIT_STATUS=$? # Capture exit status
 
-          if [ $GREP_EXIT_STATUS -ne 0 ]; then
-            # If grep failed (exit status != 0), the Sid was not found. Add permission.
-            echo "Permission with Statement ID ${STATEMENT_ID} not found or get-policy failed. Adding permission..."
-            aws lambda add-permission \
-              --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
-              --statement-id "${STATEMENT_ID}" \
-              --action "lambda:InvokeFunction" \
-              --principal events.amazonaws.com \
-              --source-arn "${RULE_ARN}" \
-              --region "${{ env.AWS_REGION }}"
+          # 3. Check if the command failed
+          if [ $ADD_PERM_EXIT_STATUS -ne 0 ]; then
+            # If it failed, check if the error was the expected ResourceConflictException
+            if echo "$ADD_PERM_ERROR" | grep -q "ResourceConflictException.*The statement id.*provided already exists"; then
+              echo "Permission with Statement ID ${STATEMENT_ID} already exists (ResourceConflictException caught). Skipping error."
+            else
+              # If it failed for any other reason, print the error and exit
+              echo "Error: aws lambda add-permission failed unexpectedly:"
+              echo "$ADD_PERM_ERROR"
+              exit 1
+            fi
           else
-            # If grep succeeded (exit status == 0), the Sid was found. Skip.
-            echo "Permission with Statement ID ${STATEMENT_ID} already exists. Skipping add-permission."
+            # If the command succeeded (exit status 0)
+            echo "Permission added successfully."
           fi
 
-          # 3. Set the Lambda Function as the Target of the Rule (put-targets is idempotent)
+          # 4. Set the Lambda Function as the Target of the Rule (put-targets is idempotent)
           echo "Setting Lambda function as target for rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
           aws events put-targets \
             --rule "${{ env.EVENTBRIDGE_RULE_NAME }}" \
