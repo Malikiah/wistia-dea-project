@@ -6,6 +6,8 @@ on:
       - main  # Trigger workflow on push to the main branch
 
 env:
+  WISTIA_API_TOKEN: ${{ secrets.WISTIA_API_TOKEN }}
+
   LAMBDA_FUNCTION_NAME: wistia-api-pull
   AWS_REGION: us-east-1 # Change this to your desired AWS region
   S3_DEPLOYMENT_BUCKET: wistia-dea-project # S3 bucket for package staging
@@ -57,6 +59,9 @@ jobs:
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --region ${{ env.AWS_REGION }} > /dev/null 2>&1 && echo 0 || echo 1)
 
+          # Define the ENVIRONMENT variable parameter string
+          ENVIRONMENT_VARS="Variables={WISTIA_API_TOKEN=${{ env.WISTIA_API_TOKEN }}}"
+
           if [ "${FUNCTION_EXISTS}" -eq 0 ]; then
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
             
@@ -82,13 +87,14 @@ jobs:
               --handler ${{ env.LAMBDA_HANDLER }} \
               --timeout ${{ env.LAMBDA_TIMEOUT }} \
               --memory-size ${{ env.LAMBDA_MEMORY }} \
+              --environment "$ENVIRONMENT_VARS" \
               --region ${{ env.AWS_REGION }}
             
           else
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} does not exist. Running create..."
             
             # --- CREATE FUNCTION ---
-            # This path inherently does not have a conflict issue, as it's the first operation.
+            # Added --environment parameter here
             aws lambda create-function \
               --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
               --runtime ${{ env.LAMBDA_RUNTIME }} \
@@ -97,5 +103,6 @@ jobs:
               --timeout ${{ env.LAMBDA_TIMEOUT }} \
               --memory-size ${{ env.LAMBDA_MEMORY }} \
               --code S3Bucket=${{ env.S3_DEPLOYMENT_BUCKET }},S3Key=wistia_lambda_package.zip \
+              --environment "$ENVIRONMENT_VARS" \
               --region ${{ env.AWS_REGION }}
           fi
