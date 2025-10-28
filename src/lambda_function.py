@@ -6,7 +6,7 @@ import os
 # Wistia API Configuration
 media_id_list = ["gskhw4w4lm", "v08dlrgr7v"]  # The given media ID
 
-api_token = os.environ.get("WISTIA_API_TOKEN")
+api_token = os.environ.get("WISTIA_API_KEY")
 s3_bucket_name = os.environ.get("S3_BUCKET_NAME")
 
 s3_client = boto3.client('s3')
