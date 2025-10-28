@@ -135,27 +135,33 @@ jobs:
             --state ENABLED \
             --region "${{ env.AWS_REGION }}"
 
-          # 2. Attempt to add Lambda permission, capturing stderr
+          # 2. Attempt to add Lambda permission, capture output/error AND exit status reliably
           echo "Attempting to add permission with Statement ID ${STATEMENT_ID}..."
-          ADD_PERM_ERROR=$(aws lambda add-permission \
+          # Run command, capture output/error to a variable, and *separately* capture exit status
+          ADD_PERM_OUTPUT=$(aws lambda add-permission \
             --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
             --statement-id "${STATEMENT_ID}" \
             --action "lambda:InvokeFunction" \
             --principal events.amazonaws.com \
             --source-arn "${RULE_ARN}" \
             --region "${{ env.AWS_REGION }}" 2>&1)
-          ADD_PERM_EXIT_STATUS=$? # Capture exit status
+          ADD_PERM_EXIT_STATUS=$? # Capture exit status *immediately* after the command
 
-          # 3. Check if the command failed
+          # Debugging: Print status and output regardless of success/failure
+          echo "add-permission exit status: $ADD_PERM_EXIT_STATUS"
+          echo "add-permission output/error: $ADD_PERM_OUTPUT"
+
+          # 3. Check if the command failed (non-zero exit status)
           if [ $ADD_PERM_EXIT_STATUS -ne 0 ]; then
             # If it failed, check if the error was the expected ResourceConflictException
-            if echo "$ADD_PERM_ERROR" | grep -q "ResourceConflictException.*The statement id.*provided already exists"; then
-              echo "Permission with Statement ID ${STATEMENT_ID} already exists (ResourceConflictException caught). Skipping error."
+            # Use grep on the captured output variable
+            if echo "$ADD_PERM_OUTPUT" | grep -q "ResourceConflictException.*The statement id.*provided already exists"; then
+              echo "Permission with Statement ID ${STATEMENT_ID} already exists (ResourceConflictException caught). Treating as success."
             else
-              # If it failed for any other reason, print the error and exit
-              echo "Error: aws lambda add-permission failed unexpectedly:"
-              echo "$ADD_PERM_ERROR"
-              exit 1
+              # If it failed for any other reason, print the captured error and exit
+              echo "Error: aws lambda add-permission failed unexpectedly."
+              # Output was already printed above for debugging
+              exit 1 # Explicitly fail the step
             fi
           else
             # If the command succeeded (exit status 0)
