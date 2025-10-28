@@ -23,6 +23,23 @@ def get_visitors():
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         visitor_json = response.json()
+        if visitor_json:
+            print("Visitor Stats Retrieved Successfully:\n")
+            try:
+                s3_client.put_object(
+                    Bucket=s3_bucket_name,
+                    Key='visitor.json',
+                    Body=json.dumps(visitor_json),
+                    ContentType='application/json'
+
+                )
+            except Exception as e:
+                print(e)
+
+            return visitor_json
+
+        else:
+            print("No visitors found.")
 
     elif response.status_code == 401:
         print("Unauthorized: Check your API token permissions.")
@@ -31,23 +48,7 @@ def get_visitors():
     else:
         print(f"Error: Received status code {response.status_code} - {response.text}")
 
-    if visitor_json:
-        print("Visitor Stats Retrieved Successfully:\n")
-        try:
-            s3_client.put_object(
-                Bucket=s3_bucket_name,
-                Key='visitor.json',
-                Body=json.dumps(visitor_json),
-                ContentType='application/json'
 
-            )
-        except Exception as e:
-            print(e)
-
-        return visitor_json
-
-    else:
-        print("No visitors found.")
 
 
 def get_events():
@@ -63,6 +64,25 @@ def get_events():
             event_json = response.json()
             events_list.append(event_json)
 
+            if events_list:
+                print("Events Retrieved Successfully:\n")
+
+                try:
+                    s3_client.put_object(
+                        Bucket=s3_bucket_name,
+                        Key='events.json',
+                        Body=json.dumps(events_list),
+                        ContentType='application/json'
+
+                    )
+                except Exception as e:
+                    print(e)
+
+                return events_list
+
+            else:
+                print("No events found...")
+
         elif response.status_code == 401:
             print("Unauthorized: Check your API token permissions.")
         elif response.status_code == 404:
@@ -70,24 +90,7 @@ def get_events():
         else:
             print(f"Error: Received status code {response.status_code} - {response.text}")
 
-    if events_list:
-        print("Events Retrieved Successfully:\n")
 
-        try:
-            s3_client.put_object(
-                Bucket=s3_bucket_name,
-                Key='events.json',
-                Body=json.dumps(events_list),
-                ContentType='application/json'
-
-            )
-        except Exception as e:
-            print(e)
-
-        return events_list
-
-    else:
-        print("No events found.")
 
 
 def get_media():
@@ -102,6 +105,20 @@ def get_media():
             media_json = {'media_id': media_id, **media_json}
             media_list.append(media_json)
 
+            if media_list:
+                print("Media Stats Retrieved Successfully:\n")
+                try:
+                    s3_client.put_object(
+                        Bucket=s3_bucket_name,
+                        Key='media.json',
+                        Body=json.dumps(media_list),
+                        ContentType='application/json'
+                    )
+                except Exception as e:
+                    print(e)
+            else:
+                print("No media found...")
+
         elif response.status_code == 401:
             print("Unauthorized: Check your API token permissions.")
         elif response.status_code == 404:
@@ -109,19 +126,7 @@ def get_media():
         else:
             print(f"Error: Received status code {response.status_code} - {response.text}")
 
-    if media_list:
-        print("Media Stats Retrieved Successfully:\n")
-        try:
-            s3_client.put_object(
-                Bucket=s3_bucket_name,
-                Key='media.json',
-                Body=json.dumps(media_list),
-                ContentType='application/json'
-            )
-        except Exception as e:
-            print(e)
-    else:
-        print("No media found...")
+
 
 
 def get_media_engagements():
@@ -136,28 +141,29 @@ def get_media_engagements():
             media_engagement_json = {'media_id': media_id, **media_engagement_json}
             media_engagements_list.append(media_engagement_json)
 
+            if media_engagements_list:
+                print("Media Engagements Retrieved Successfully:\n")
+                try:
+                    s3_client.put_object(
+                        Bucket=s3_bucket_name,
+                        Key='media_engagements.json',
+                        Body=json.dumps(media_engagements_list),
+                        ContentType='application/json'
+                    )
+                except Exception as e:
+                    print(e)
+
+                return media_engagements_list
+
+            else:
+                print("No media engagements found.")
+
         elif response.status_code == 401:
             print("Unauthorized: Check your API token permissions.")
         elif response.status_code == 404:
             print("Error: Media engagements not found. Check if the media ID is correct.")
         else:
             print(f"Error: Received status code {response.status_code} - {response.text}")
-    if media_engagements_list:
-        print("Media Engagements Retrieved Successfully:\n")
-        try:
-            s3_client.put_object(
-                Bucket=s3_bucket_name,
-                Key='media_engagements.json',
-                Body=json.dumps(media_engagements_list),
-                ContentType='application/json'
-            )
-        except Exception as e:
-            print(e)
-
-        return media_engagements_list
-
-    else:
-        print("No media engagements found.")
 
 
 def lambda_handler(event, context):
