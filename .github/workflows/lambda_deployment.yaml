@@ -44,10 +44,9 @@ jobs:
           aws s3 cp wistia_lambda_package.zip s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
 
       # 5. Deploy to AWS Lambda
-      - name: Deploy Lambda function
-        uses: aws-actions/aws-lambda-deploy@v1
-        with:
-          function-name: ${{ env.LAMBDA_FUNCTION_NAME }}
-          #zip-file: s3://${{ env.S3_DEPLOYMENT_BUCKET }}/wistia_lambda_package.zip
-          s3-bucket: ${{ env.S3_DEPLOYMENT_BUCKET }}
-          s3-key: wistia_lambda_package.zip
+      - name: Deploy Lambda function (Using S3 Artifact)
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --s3-bucket ${{ env.S3_DEPLOYMENT_BUCKET }} \
+            --s3-key wistia_lambda_package.zip 
