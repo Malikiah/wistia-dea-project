@@ -6,7 +6,7 @@ on:
       - main  # Trigger workflow on push to the main branch
 
 env:
-  WISTIA_API_TOKEN: ${{ secrets.WISTIA_API_TOKEN }}
+  WISTIA_API_KEY: ${{ secrets.WISTIA_API_KEY }}
 
   LAMBDA_FUNCTION_NAME: wistia-api-pull
   AWS_REGION: us-east-1 # Change this to your desired AWS region
@@ -60,7 +60,7 @@ jobs:
             --region ${{ env.AWS_REGION }} > /dev/null 2>&1 && echo 0 || echo 1)
 
           # Define the ENVIRONMENT variable parameter string
-          ENVIRONMENT_VARS="Variables={WISTIA_API_TOKEN=${{ env.WISTIA_API_TOKEN }}}"
+          ENVIRONMENT_VARS="Variables={WISTIA_API_KEY=${{ env.WISTIA_API_KEY }}}"
 
           if [ "${FUNCTION_EXISTS}" -eq 0 ]; then
             echo "Function ${{ env.LAMBDA_FUNCTION_NAME }} exists. Running update..."
