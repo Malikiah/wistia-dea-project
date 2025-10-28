@@ -61,7 +61,10 @@ The pipeline should run for 7 days.
 This is the high-level overview of the system.
 ### High-Level Diagram:
 ![Pasted image 20251026201531.png](meta/images/Pasted%20image%2020251026201531.png)
+
 ### Technology Stack 
+
+---
 
 ##### Data Source 
 Wistia API
@@ -69,30 +72,38 @@ Wistia API
 - dim_visitor → https://docs.wistia.com/reference/get_stats-visitors and https://docs.wistia.com/reference/get_stats-events
 - fct_media_engagement → https://docs.wistia.com/reference/get_stats-medias-mediaid-engagement
 
+---
+
 #### CICD
 1. Code will be pushed to github (Lambda Functions and git workflows)
 2. Github workflows package the lambda function and its dependencies
 3. Then creates or updates (Lambda Function and Event Bridge)
 
+---
+
 #### Ingestion
 Lambda function hits wistia api and adds minor additional information needed for joining data together and stores these json file into an S3 bucket.
 
+---
+
 #### Storage
-Lambda → S3
+Lambda → S3 <br>
 I will be storing the json output into S3 to save money on storage and for simplicity. S3 can act as a datalake.
+
+---
 
 #### Scheduling and Auto Retry
 Scheduling will be handled by AWS EventBridge to run every day
 
+---
 #### Dashboards (Streamlit)
 Then we can hit S3 directly with Streamlit on the views to create BI dashboards. (Optionally)
 
+---
 
 ### 4. Data Model
 
 ![Pasted image 20251024143215.png](meta/images/Pasted%20image%2020251024143215.png)
-
-
 
 # Deliverables
 
