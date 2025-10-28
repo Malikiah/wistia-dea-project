@@ -2,7 +2,7 @@
 - Create Github Repository.
 - Add this code.
 - Configure OIDC in AWS to allow for that repository.
-- Workflow will auto execute and setup everything.
+- Workflow will auto execute and setup everything, except for the S3 bucket.
 
 ## 1. Introduction and Business Goals
     
