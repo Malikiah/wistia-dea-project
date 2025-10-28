@@ -1,3 +1,8 @@
+#  Configuration Instructions
+- Create Github Repository.
+- Add this code.
+- Configure OIDC in AWS to allow for that repository.
+- Workflow will auto execute and setup everything.
 
 ## 1. Introduction and Business Goals
     
@@ -76,11 +81,6 @@ Then we can hit S3 directly with Streamlit on the views to create BI dashboards.
 ![Pasted image 20251024143215.png](meta/images/Pasted%20image%2020251024143215.png)
 
 
-#  Configuration Instructions
-- Create Github Repository.
-- Add this code.
-- Configure OIDC in AWS to allow for that repository.
-- Workflow will auto execute and setup everything.
 
 # Deliverables
 
