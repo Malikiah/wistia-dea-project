@@ -106,3 +106,30 @@ jobs:
               --environment "$ENVIRONMENT_VARS" \
               --region ${{ env.AWS_REGION }}
           fi
+      # 6. Configure EventBridge Schedule (NEW STEP)
+      - name: Configure daily EventBridge schedule
+        run: |
+          LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query 'Configuration.FunctionArn' --region ${{ env.AWS_REGION }} --output text)
+          
+          # 1. Create/Update the EventBridge Rule
+          aws events put-rule \
+            --name ${{ env.EVENTBRIDGE_RULE_NAME }} \
+            --schedule-expression "${{ env.SCHEDULE_CRON }}" \
+            --state ENABLED \
+            --region ${{ env.AWS_REGION }}
+            
+          # 2. Grant EventBridge Permission to Invoke Lambda
+          # This command is idempotent (safe to run multiple times)
+          aws lambda add-permission \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --statement-id "${{ env.EVENTBRIDGE_RULE_NAME }}-Invoke" \
+            --action "lambda:InvokeFunction" \
+            --principal events.amazonaws.com \
+            --source-arn arn:aws:events:${{ env.AWS_REGION }}:918346807626:rule/${{ env.EVENTBRIDGE_RULE_NAME }} \
+            --region ${{ env.AWS_REGION }}
+            
+          # 3. Set the Lambda Function as the Target of the Rule
+          aws events put-targets \
+            --rule ${{ env.EVENTBRIDGE_RULE_NAME }} \
+            --targets "Id=1,Arn=$LAMBDA_ARN" \
+            --region ${{ env.AWS_REGION }}
