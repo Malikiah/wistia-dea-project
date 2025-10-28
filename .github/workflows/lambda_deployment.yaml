@@ -127,7 +127,7 @@ jobs:
           RULE_ARN="arn:aws:events:${{ env.AWS_REGION }}:918346807626:rule/${{ env.EVENTBRIDGE_RULE_NAME }}"
           echo "Rule ARN: $RULE_ARN"
 
-          # 1. Create/Update the EventBridge Rule (put-rule is idempotent)
+          # Create/Update the EventBridge Rule (put-rule is idempotent)
           echo "Creating/Updating EventBridge rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
           aws events put-rule \
             --name "${{ env.EVENTBRIDGE_RULE_NAME }}" \
@@ -135,10 +135,9 @@ jobs:
             --state ENABLED \
             --region "${{ env.AWS_REGION }}"
 
-          # 2. Attempt to add Lambda permission, explicitly controlling error exit
+          # Attempt to add Lambda permission, explicitly controlling error exit
           echo "Attempting to add permission with Statement ID ${STATEMENT_ID}..."
           
-          # Temporarily disable exit on error
           set +e 
           ADD_PERM_OUTPUT=$(aws lambda add-permission \
             --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
@@ -151,27 +150,22 @@ jobs:
           # Re-enable exit on error
           set -e 
 
-          # Debugging: Print status and output regardless of success/failure
           echo "add-permission exit status: $ADD_PERM_EXIT_STATUS"
           echo "add-permission output/error: $ADD_PERM_OUTPUT"
 
-          # 3. Check if the command failed (non-zero exit status)
+          # Check if the command failed (non-zero exit status)
           if [ $ADD_PERM_EXIT_STATUS -ne 0 ]; then
-            # If it failed, check if the error was the expected ResourceConflictException
             if echo "$ADD_PERM_OUTPUT" | grep -q "ResourceConflictException.*The statement id.*provided already exists"; then
               echo "Permission with Statement ID ${STATEMENT_ID} already exists (ResourceConflictException caught). Treating as success."
             else
-              # If it failed for any other reason, print the captured error and exit
               echo "Error: aws lambda add-permission failed unexpectedly."
-              # Output was already printed above for debugging
               exit 1 # Explicitly fail the step
             fi
           else
-            # If the command succeeded (exit status 0)
             echo "Permission added successfully."
           fi
 
-          # 4. Set the Lambda Function as the Target of the Rule (put-targets is idempotent)
+          # Set the Lambda Function as the Target of the Rule
           echo "Setting Lambda function as target for rule: ${{ env.EVENTBRIDGE_RULE_NAME }}"
           aws events put-targets \
             --rule "${{ env.EVENTBRIDGE_RULE_NAME }}" \
